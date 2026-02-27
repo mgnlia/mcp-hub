@@ -17,21 +17,21 @@ const PKG_BADGE: Record<string, { label: string; color: string }> = {
   github: { label: "GitHub", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
 };
 
-function shortName(fullName: string): string {
-  // io.github.org/server-name → server-name
+function shortName(fullName?: string): string {
+  if (!fullName) return "Unknown";
   const parts = fullName.split("/");
   return parts[parts.length - 1] ?? fullName;
 }
 
-function orgName(fullName: string): string {
-  // io.github.org/server-name → org
-  const dotParts = fullName.split(".");
+function orgName(fullName?: string): string {
+  if (!fullName) return "";
   const slashIdx = fullName.indexOf("/");
   if (slashIdx > 0) {
     const prefix = fullName.slice(0, slashIdx);
     const prefixParts = prefix.split(".");
     return prefixParts[prefixParts.length - 1] ?? "";
   }
+  const dotParts = fullName.split(".");
   return dotParts[dotParts.length - 1] ?? "";
 }
 
@@ -43,6 +43,7 @@ export function ServerCard({ server, onClick }: ServerCardProps) {
   const pkgTypes = Array.from(new Set(server.packages?.map((p) => p.registry_name) ?? []));
   const displayName = shortName(server.name);
   const org = orgName(server.name);
+  const updatedAt = server.updated_at ?? server.created_at ?? new Date().toISOString();
 
   return (
     <div
@@ -124,7 +125,7 @@ export function ServerCard({ server, onClick }: ServerCardProps) {
               <GitBranch className="w-3.5 h-3.5" />
             </a>
           )}
-          <span className="text-[10px]">{timeAgo(server.updated_at)}</span>
+          <span className="text-[10px]">{timeAgo(updatedAt)}</span>
           <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
