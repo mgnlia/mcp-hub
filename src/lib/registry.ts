@@ -61,19 +61,14 @@ export async function fetchServers(params?: {
 
   const raw: RegistryResponseRaw = await res.json();
 
-  // Handle both new schema (servers[].server) and potential legacy flat schema
+  // API returns: { servers: [{ server: {...}, _meta: {...} }], metadata: { nextCursor, count } }
+  // Each element MUST be unwrapped via item.server — never treat item as a flat server object
   const rawServers = raw.servers ?? [];
-  const normalised: MCPServer[] = rawServers.map((item) => {
-    // New schema: item has a "server" key
-    if (item && typeof item === "object" && "server" in item) {
-      return normaliseServer(item as MCPServerListItem);
-    }
-    // Legacy flat schema: item IS the server
-    const legacy = item as unknown as MCPServer;
-    return legacy;
-  });
+  const normalised: MCPServer[] = rawServers
+    .filter((item) => item && typeof item === "object" && "server" in item && item.server?.name)
+    .map((item) => normaliseServer(item as MCPServerListItem));
 
-  // Cursor: new schema uses metadata.nextCursor, legacy uses next_cursor
+  // Cursor: API uses metadata.nextCursor
   const next_cursor = raw.metadata?.nextCursor ?? raw.next_cursor;
 
   return {
@@ -142,7 +137,7 @@ export function getPackageInstallCmd(server: MCPServer): string | null {
   const pkg = server.packages?.[0];
   if (!pkg) return null;
 
-  // New schema uses registryType + identifier
+  // API uses registryType + identifier
   const type = pkg.registryType ?? pkg.registry_name;
   const name = pkg.identifier ?? pkg.name;
   if (!name) return null;
