@@ -5,7 +5,7 @@ import {
   X, ExternalLink, Copy, Check, Play, Package,
   GitBranch, Clock, Tag, ChevronRight
 } from "lucide-react";
-import type { MCPServer } from "@/types/mcp";
+import type { MCPServer, MCPPackage } from "@/types/mcp";
 import { cn, timeAgo, CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/utils";
 import { getPackageInstallCmd, getRepoUrl } from "@/lib/registry";
 import { PlaygroundPanel } from "./PlaygroundPanel";
@@ -16,6 +16,20 @@ interface ServerDetailModalProps {
 }
 
 type Tab = "overview" | "install" | "playground";
+
+// Helper: normalise package fields across old and new API schema
+function normalisePkg(pkg: MCPPackage): {
+  type: string;
+  name: string;
+  version?: string;
+  envVars: MCPPackage["environmentVariables"];
+} {
+  const type = (pkg.registryType ?? pkg.registry_name ?? "").toLowerCase();
+  const name = pkg.identifier ?? pkg.name ?? "";
+  const version = pkg.version;
+  const envVars = pkg.environmentVariables ?? pkg.environment_variables ?? [];
+  return { type, name, version, envVars };
+}
 
 export function ServerDetailModal({ server, onClose }: ServerDetailModalProps) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -139,32 +153,38 @@ export function ServerDetailModal({ server, onClose }: ServerDetailModalProps) {
                     Packages
                   </h3>
                   <div className="space-y-2">
-                    {server.packages.map((pkg, i) => (
-                      <div key={i} className="flex items-center justify-between bg-white/3 rounded-lg p-3">
-                        <div className="flex items-center gap-2">
-                          <Package className="w-3.5 h-3.5 text-slate-500" />
-                          <div>
-                            <p className="text-sm text-white font-mono">{pkg.name}</p>
-                            <p className="text-[10px] text-slate-600">{pkg.registry_name}</p>
+                    {server.packages.map((pkg, i) => {
+                      const { type, name, version } = normalisePkg(pkg);
+                      return (
+                        <div key={i} className="flex items-center justify-between bg-white/3 rounded-lg p-3">
+                          <div className="flex items-center gap-2">
+                            <Package className="w-3.5 h-3.5 text-slate-500" />
+                            <div>
+                              <p className="text-sm text-white font-mono truncate max-w-xs">{name || "—"}</p>
+                              <p className="text-[10px] text-slate-600">{type || "unknown"}</p>
+                            </div>
                           </div>
+                          {version && (
+                            <span className="text-xs text-slate-500 font-mono">v{version}</span>
+                          )}
                         </div>
-                        {pkg.version && (
-                          <span className="text-xs text-slate-500 font-mono">v{pkg.version}</span>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* Environment variables */}
-              {server.packages?.some((p) => p.environment_variables?.length) && (
+              {/* Environment variables — support both old and new schema */}
+              {server.packages?.some((p) => {
+                const { envVars } = normalisePkg(p);
+                return envVars && envVars.length > 0;
+              }) && (
                 <div>
                   <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
                     Environment Variables
                   </h3>
                   <div className="space-y-2">
-                    {server.packages.flatMap((p) => p.environment_variables ?? []).map((env, i) => (
+                    {server.packages.flatMap((p) => normalisePkg(p).envVars ?? []).map((env, i) => (
                       <div key={i} className="flex items-start gap-2 bg-white/3 rounded-lg p-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -174,7 +194,7 @@ export function ServerDetailModal({ server, onClose }: ServerDetailModalProps) {
                                 required
                               </span>
                             )}
-                            {env.is_secret && (
+                            {(env.isSecret || env.is_secret) && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
                                 secret
                               </span>
@@ -199,40 +219,43 @@ export function ServerDetailModal({ server, onClose }: ServerDetailModalProps) {
               </p>
 
               {server.packages?.map((pkg, i) => {
+                const { type, name } = normalisePkg(pkg);
+                if (!name) return null;
+
                 let cmd = "";
                 let label = "";
                 let configJson = "";
 
-                if (pkg.registry_name === "npm") {
-                  cmd = `npx ${pkg.name}`;
+                if (type === "npm") {
+                  cmd = `npx ${name}`;
                   label = "Node.js / npx";
                   configJson = JSON.stringify({
                     mcpServers: {
                       [shortName]: {
                         command: "npx",
-                        args: ["-y", pkg.name],
+                        args: ["-y", name],
                       },
                     },
                   }, null, 2);
-                } else if (pkg.registry_name === "pypi") {
-                  cmd = `uvx ${pkg.name}`;
+                } else if (type === "pypi") {
+                  cmd = `uvx ${name}`;
                   label = "Python / uvx";
                   configJson = JSON.stringify({
                     mcpServers: {
                       [shortName]: {
                         command: "uvx",
-                        args: [pkg.name],
+                        args: [name],
                       },
                     },
                   }, null, 2);
-                } else if (pkg.registry_name === "docker") {
-                  cmd = `docker run -i --rm ${pkg.name}`;
-                  label = "Docker";
+                } else if (type === "docker" || type === "oci") {
+                  cmd = `docker run -i --rm ${name}`;
+                  label = "Docker / OCI";
                   configJson = JSON.stringify({
                     mcpServers: {
                       [shortName]: {
                         command: "docker",
-                        args: ["run", "-i", "--rm", pkg.name],
+                        args: ["run", "-i", "--rm", name],
                       },
                     },
                   }, null, 2);
