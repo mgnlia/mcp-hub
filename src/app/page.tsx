@@ -7,8 +7,10 @@ import { ServerGrid } from "@/components/ServerGrid";
 import { StatsBar } from "@/components/StatsBar";
 import type { MCPServer } from "@/types/mcp";
 
-// Use dynamic rendering so the page always fetches fresh data at runtime
+// force-dynamic so the page always fetches fresh data at runtime
+// (no-store in fetch already handles this, but belt-and-suspenders)
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 async function getServersWithCategories(): Promise<MCPServer[]> {
   try {
@@ -20,14 +22,15 @@ async function getServersWithCategories(): Promise<MCPServer[]> {
         const page2 = await fetchServers({ limit: 100, cursor: page1.next_cursor });
         servers = [...servers, ...(page2.servers ?? [])];
       } catch {
-        // page 2 optional
+        // page 2 optional — first page is enough to show value
       }
     }
 
     return servers
       .filter((s) => s && s.id)
       .map((s) => ({ ...s, category: deriveCategory(s) }));
-  } catch {
+  } catch (err) {
+    console.error("[SecFlow] Registry fetch failed, using fallback:", err);
     return getFallbackServers();
   }
 }
@@ -41,7 +44,7 @@ function getFallbackServers(): MCPServer[] {
       created_at: "2025-04-01T00:00:00Z",
       updated_at: "2025-12-01T00:00:00Z",
       version_detail: { version: "0.3.0", release_date: "2025-12-01T00:00:00Z", is_latest: true },
-      packages: [{ registry_name: "docker", name: "ghcr.io/github/github-mcp-server" }],
+      packages: [{ registryType: "oci", identifier: "ghcr.io/github/github-mcp-server" }],
       repository: { url: "https://github.com/github/github-mcp-server", source: "github" },
       category: "Dev Tools",
     },
@@ -52,7 +55,7 @@ function getFallbackServers(): MCPServer[] {
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
       version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registry_name: "npm", name: "@modelcontextprotocol/server-filesystem" }],
+      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-filesystem" }],
       repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
       category: "Files & Storage",
     },
@@ -63,7 +66,7 @@ function getFallbackServers(): MCPServer[] {
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
       version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registry_name: "npm", name: "@modelcontextprotocol/server-fetch" }],
+      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-fetch" }],
       repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
       category: "Web & Search",
     },
@@ -74,7 +77,7 @@ function getFallbackServers(): MCPServer[] {
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
       version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registry_name: "npm", name: "@modelcontextprotocol/server-memory" }],
+      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-memory" }],
       repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
       category: "Memory",
     },
@@ -85,7 +88,7 @@ function getFallbackServers(): MCPServer[] {
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
       version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registry_name: "npm", name: "@modelcontextprotocol/server-git" }],
+      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-git" }],
       repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
       category: "Dev Tools",
     },
@@ -96,7 +99,7 @@ function getFallbackServers(): MCPServer[] {
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
       version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registry_name: "npm", name: "@modelcontextprotocol/server-sequential-thinking" }],
+      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-sequential-thinking" }],
       repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
       category: "AI & ML",
     },
@@ -107,8 +110,14 @@ export default async function Home() {
   const servers = await getServersWithCategories();
 
   const categories = Array.from(new Set(servers.map((s) => s.category ?? "General"))).sort();
+
+  // Support both new schema (registryType) and legacy (registry_name)
   const packageTypes = Array.from(
-    new Set(servers.flatMap((s) => s.packages?.map((p) => p.registry_name) ?? []))
+    new Set(
+      servers.flatMap((s) =>
+        s.packages?.map((p) => p.registryType ?? p.registry_name ?? "").filter(Boolean) ?? []
+      )
+    )
   ).sort();
 
   return (
