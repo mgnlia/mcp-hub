@@ -31,8 +31,8 @@ export function ServerGrid({ initialServers, categories, packageTypes }: ServerG
       const q = query.toLowerCase();
       list = list.filter(
         (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.description.toLowerCase().includes(q)
+          (s.name ?? "").toLowerCase().includes(q) ||
+          (s.description ?? "").toLowerCase().includes(q)
       );
     }
 
