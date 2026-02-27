@@ -7,10 +7,8 @@ import { ServerGrid } from "@/components/ServerGrid";
 import { StatsBar } from "@/components/StatsBar";
 import type { MCPServer } from "@/types/mcp";
 
-// force-dynamic so the page always fetches fresh data at runtime
-// (no-store in fetch already handles this, but belt-and-suspenders)
+// Use dynamic rendering so the page always fetches fresh data at runtime
 export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
 
 async function getServersWithCategories(): Promise<MCPServer[]> {
   try {
@@ -22,15 +20,14 @@ async function getServersWithCategories(): Promise<MCPServer[]> {
         const page2 = await fetchServers({ limit: 100, cursor: page1.next_cursor });
         servers = [...servers, ...(page2.servers ?? [])];
       } catch {
-        // page 2 optional — first page is enough to show value
+        // page 2 optional
       }
     }
 
     return servers
       .filter((s) => s && s.id)
       .map((s) => ({ ...s, category: deriveCategory(s) }));
-  } catch (err) {
-    console.error("[SecFlow] Registry fetch failed, using fallback:", err);
+  } catch {
     return getFallbackServers();
   }
 }
@@ -44,7 +41,7 @@ function getFallbackServers(): MCPServer[] {
       created_at: "2025-04-01T00:00:00Z",
       updated_at: "2025-12-01T00:00:00Z",
       version_detail: { version: "0.3.0", release_date: "2025-12-01T00:00:00Z", is_latest: true },
-      packages: [{ registryType: "oci", identifier: "ghcr.io/github/github-mcp-server" }],
+      packages: [{ registryType: "docker", identifier: "ghcr.io/github/github-mcp-server" }],
       repository: { url: "https://github.com/github/github-mcp-server", source: "github" },
       category: "Dev Tools",
     },
@@ -110,15 +107,20 @@ export default async function Home() {
   const servers = await getServersWithCategories();
 
   const categories = Array.from(new Set(servers.map((s) => s.category ?? "General"))).sort();
-
-  // Support both new schema (registryType) and legacy (registry_name)
   const packageTypes = Array.from(
     new Set(
-      servers.flatMap((s) =>
-        s.packages?.map((p) => p.registryType ?? p.registry_name ?? "").filter(Boolean) ?? []
+      servers.flatMap(
+        (s) =>
+          s.packages?.map((p) => {
+            const t = (p.registryType ?? p.registry_name ?? "").toLowerCase();
+            // Normalise "oci" to "docker" for the filter UI
+            return t === "oci" ? "docker" : t;
+          }) ?? []
       )
     )
-  ).sort();
+  )
+    .filter(Boolean)
+    .sort();
 
   return (
     <div className="min-h-screen bg-[#0a0b0f]">
