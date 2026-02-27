@@ -7,24 +7,27 @@ import { ServerGrid } from "@/components/ServerGrid";
 import { StatsBar } from "@/components/StatsBar";
 import type { MCPServer } from "@/types/mcp";
 
+// Use dynamic rendering so the page always fetches fresh data at runtime
+export const dynamic = "force-dynamic";
+
 async function getServersWithCategories(): Promise<MCPServer[]> {
   try {
-    // Fetch first 2 pages to populate the UI quickly
     const page1 = await fetchServers({ limit: 100 });
-    let servers = page1.servers;
+    let servers = page1.servers ?? [];
 
     if (page1.next_cursor) {
       try {
         const page2 = await fetchServers({ limit: 100, cursor: page1.next_cursor });
-        servers = [...servers, ...page2.servers];
+        servers = [...servers, ...(page2.servers ?? [])];
       } catch {
         // page 2 optional
       }
     }
 
-    return servers.map((s) => ({ ...s, category: deriveCategory(s) }));
+    return servers
+      .filter((s) => s && s.id)
+      .map((s) => ({ ...s, category: deriveCategory(s) }));
   } catch {
-    // Return fallback data if registry is unreachable
     return getFallbackServers();
   }
 }
@@ -33,7 +36,7 @@ function getFallbackServers(): MCPServer[] {
   return [
     {
       id: "io.github.github/github-mcp-server",
-      name: "io.github.github/github-mcp-server",
+      name: "github/github-mcp-server",
       description: "GitHub's official MCP Server — manage repos, issues, PRs, and code via natural language.",
       created_at: "2025-04-01T00:00:00Z",
       updated_at: "2025-12-01T00:00:00Z",
@@ -44,7 +47,7 @@ function getFallbackServers(): MCPServer[] {
     },
     {
       id: "io.github.modelcontextprotocol/server-filesystem",
-      name: "io.github.modelcontextprotocol/server-filesystem",
+      name: "modelcontextprotocol/server-filesystem",
       description: "Secure file operations with configurable access controls for local filesystem.",
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
@@ -55,7 +58,7 @@ function getFallbackServers(): MCPServer[] {
     },
     {
       id: "io.github.modelcontextprotocol/server-fetch",
-      name: "io.github.modelcontextprotocol/server-fetch",
+      name: "modelcontextprotocol/server-fetch",
       description: "Web content fetching and conversion for efficient LLM usage.",
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
@@ -66,7 +69,7 @@ function getFallbackServers(): MCPServer[] {
     },
     {
       id: "io.github.modelcontextprotocol/server-memory",
-      name: "io.github.modelcontextprotocol/server-memory",
+      name: "modelcontextprotocol/server-memory",
       description: "Knowledge graph-based persistent memory system for AI agents.",
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
@@ -77,7 +80,7 @@ function getFallbackServers(): MCPServer[] {
     },
     {
       id: "io.github.modelcontextprotocol/server-git",
-      name: "io.github.modelcontextprotocol/server-git",
+      name: "modelcontextprotocol/server-git",
       description: "Tools to read, search, and manipulate Git repositories.",
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
@@ -88,7 +91,7 @@ function getFallbackServers(): MCPServer[] {
     },
     {
       id: "io.github.modelcontextprotocol/server-sequential-thinking",
-      name: "io.github.modelcontextprotocol/server-sequential-thinking",
+      name: "modelcontextprotocol/server-sequential-thinking",
       description: "Dynamic and reflective problem-solving through thought sequences.",
       created_at: "2024-11-01T00:00:00Z",
       updated_at: "2025-11-01T00:00:00Z",
