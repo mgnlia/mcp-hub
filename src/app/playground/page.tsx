@@ -1,7 +1,9 @@
 import { Navbar } from "@/components/Navbar";
-import { fetchServers } from "@/lib/registry";
-import { deriveCategory } from "@/lib/registry";
+import { fetchServers, deriveCategory } from "@/lib/registry";
 import { PlaygroundPageClient } from "@/components/PlaygroundPageClient";
+import type { MCPServer } from "@/types/mcp";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Playground — MCP Hub",
@@ -9,10 +11,12 @@ export const metadata = {
 };
 
 export default async function PlaygroundPage() {
-  let servers;
+  let servers: MCPServer[] = [];
   try {
     const page = await fetchServers({ limit: 100 });
-    servers = page.servers.map((s) => ({ ...s, category: deriveCategory(s) }));
+    servers = (page.servers ?? [])
+      .filter((s) => s && s.id)
+      .map((s) => ({ ...s, category: deriveCategory(s) }));
   } catch {
     servers = [];
   }
