@@ -16,6 +16,11 @@ interface ServerGridProps {
 
 const PAGE_SIZE = 24;
 
+// Helper: get the package registry type from either new or legacy schema
+function pkgType(p: { registryType?: string; registry_name?: string }): string {
+  return (p.registryType ?? p.registry_name ?? "").toLowerCase();
+}
+
 export function ServerGrid({ initialServers, categories, packageTypes }: ServerGridProps) {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -42,7 +47,7 @@ export function ServerGrid({ initialServers, categories, packageTypes }: ServerG
 
     if (selectedPkg) {
       list = list.filter((s) =>
-        s.packages?.some((p) => p.registry_name === selectedPkg)
+        s.packages?.some((p) => pkgType(p) === selectedPkg.toLowerCase())
       );
     }
 
