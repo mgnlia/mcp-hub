@@ -6,7 +6,6 @@ import type {
 } from "@/types/mcp";
 
 const REGISTRY_BASE = "https://registry.modelcontextprotocol.io";
-const REVALIDATE_SECONDS = 300; // 5 min cache
 
 // ─── Normalise a raw list item into our MCPServer shape ──────────────────────
 function normaliseServer(item: MCPServerListItem): MCPServer {
@@ -48,10 +47,12 @@ export async function fetchServers(params?: {
   if (params?.query) url.searchParams.set("q", params.query);
 
   const res = await fetch(url.toString(), {
-    next: { revalidate: REVALIDATE_SECONDS },
-    headers: { Accept: "application/json" },
-    // Ensure no stale cache in prod
+    // Use only cache: "no-store" — do NOT combine with next.revalidate
     cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "mcp-hub/1.0 (https://mcp-hub-one.vercel.app)",
+    },
   });
 
   if (!res.ok) {
@@ -85,8 +86,11 @@ export async function fetchServers(params?: {
 // ─── Fetch a single server by id ─────────────────────────────────────────────
 export async function fetchServer(id: string): Promise<MCPServer> {
   const res = await fetch(`${REGISTRY_BASE}/v0/servers/${encodeURIComponent(id)}`, {
-    next: { revalidate: REVALIDATE_SECONDS },
-    headers: { Accept: "application/json" },
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "mcp-hub/1.0 (https://mcp-hub-one.vercel.app)",
+    },
   });
 
   if (!res.ok) {
