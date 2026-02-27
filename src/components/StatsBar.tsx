@@ -1,17 +1,53 @@
 "use client";
 
-import type { MCPServer } from "@/types/mcp";
+import { useState, useEffect } from "react";
+import type { MCPServer, MCPServerListItem } from "@/types/mcp";
 
 interface StatsBarProps {
   servers: MCPServer[];
 }
 
-// Helper: get the package registry type from either new or legacy schema
 function pkgType(p: { registryType?: string; registry_name?: string }): string {
-  return (p.registryType ?? p.registry_name ?? "").toLowerCase();
+  const t = (p.registryType ?? p.registry_name ?? "").toLowerCase();
+  return t === "oci" ? "docker" : t;
 }
 
-export function StatsBar({ servers }: StatsBarProps) {
+function normaliseRaw(item: MCPServerListItem): MCPServer | null {
+  try {
+    const s = item.server;
+    if (!s?.name) return null;
+    return {
+      id: s.name,
+      name: s.name,
+      description: s.description ?? "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      packages: s.packages,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function StatsBar({ servers: initialServers }: StatsBarProps) {
+  const [servers, setServers] = useState<MCPServer[]>(initialServers);
+
+  // If SSR gave us 0 servers, fetch client-side for stats
+  useEffect(() => {
+    if (initialServers.length > 0) return;
+    fetch("/api/servers?limit=100")
+      .then((r) => r.json())
+      .then((raw) => {
+        const items: MCPServerListItem[] = raw.servers ?? [];
+        const normalised = items
+          .filter((i) => i && "server" in i)
+          .map(normaliseRaw)
+          .filter((s): s is MCPServer => s !== null);
+        if (normalised.length > 0) setServers(normalised);
+      })
+      .catch(() => {});
+  }, [initialServers.length]);
+
   const npmCount = servers.filter((s) =>
     s.packages?.some((p) => pkgType(p) === "npm")
   ).length;
@@ -19,7 +55,7 @@ export function StatsBar({ servers }: StatsBarProps) {
     s.packages?.some((p) => pkgType(p) === "pypi")
   ).length;
   const dockerCount = servers.filter((s) =>
-    s.packages?.some((p) => ["oci", "docker"].includes(pkgType(p)))
+    s.packages?.some((p) => pkgType(p) === "docker")
   ).length;
 
   const stats = [
