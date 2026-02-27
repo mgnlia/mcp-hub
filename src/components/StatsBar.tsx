@@ -6,15 +6,20 @@ interface StatsBarProps {
   servers: MCPServer[];
 }
 
+// Helper: get the package registry type from either new or legacy schema
+function pkgType(p: { registryType?: string; registry_name?: string }): string {
+  return (p.registryType ?? p.registry_name ?? "").toLowerCase();
+}
+
 export function StatsBar({ servers }: StatsBarProps) {
   const npmCount = servers.filter((s) =>
-    s.packages?.some((p) => p.registry_name === "npm")
+    s.packages?.some((p) => pkgType(p) === "npm")
   ).length;
   const pypiCount = servers.filter((s) =>
-    s.packages?.some((p) => p.registry_name === "pypi")
+    s.packages?.some((p) => pkgType(p) === "pypi")
   ).length;
   const dockerCount = servers.filter((s) =>
-    s.packages?.some((p) => p.registry_name === "docker")
+    s.packages?.some((p) => ["oci", "docker"].includes(pkgType(p)))
   ).length;
 
   const stats = [
