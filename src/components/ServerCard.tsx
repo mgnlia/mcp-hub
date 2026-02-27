@@ -14,6 +14,7 @@ const PKG_BADGE: Record<string, { label: string; color: string }> = {
   npm:    { label: "npm",    color: "bg-red-500/10 text-red-400 border-red-500/20" },
   pypi:   { label: "PyPI",   color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
   docker: { label: "Docker", color: "bg-sky-500/10 text-sky-400 border-sky-500/20" },
+  oci:    { label: "Docker", color: "bg-sky-500/10 text-sky-400 border-sky-500/20" },
   github: { label: "GitHub", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
 };
 
@@ -35,12 +36,17 @@ function orgName(fullName?: string): string {
   return dotParts[dotParts.length - 1] ?? "";
 }
 
+// Helper: get the package registry type from either new or legacy schema
+function getPkgType(p: { registryType?: string; registry_name?: string }): string {
+  return (p.registryType ?? p.registry_name ?? "").toLowerCase();
+}
+
 export function ServerCard({ server, onClick }: ServerCardProps) {
   const category = server.category ?? "General";
   const catColor = CATEGORY_COLORS[category] ?? CATEGORY_COLORS["General"];
   const catIcon = CATEGORY_ICONS[category] ?? "📦";
   const installCmd = getPackageInstallCmd(server);
-  const pkgTypes = Array.from(new Set(server.packages?.map((p) => p.registry_name) ?? []));
+  const pkgTypes = Array.from(new Set(server.packages?.map(getPkgType).filter(Boolean) ?? []));
   const displayName = shortName(server.name);
   const org = orgName(server.name);
   const updatedAt = server.updated_at ?? server.created_at ?? new Date().toISOString();
@@ -134,7 +140,7 @@ export function ServerCard({ server, onClick }: ServerCardProps) {
       <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
         <div className="flex items-center gap-1 text-[10px] text-brand-400">
           <Play className="w-3 h-3" />
-          <span>Test</span>
+          <span>View</span>
         </div>
       </div>
     </div>
