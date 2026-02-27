@@ -1,6 +1,9 @@
 import { Navbar } from "@/components/Navbar";
 import { ComposeClient } from "@/components/ComposeClient";
 import { fetchServers, deriveCategory } from "@/lib/registry";
+import type { MCPServer } from "@/types/mcp";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Compose — MCP Hub",
@@ -8,10 +11,12 @@ export const metadata = {
 };
 
 export default async function ComposePage() {
-  let servers;
+  let servers: MCPServer[] = [];
   try {
     const page = await fetchServers({ limit: 100 });
-    servers = page.servers.map((s) => ({ ...s, category: deriveCategory(s) }));
+    servers = (page.servers ?? [])
+      .filter((s) => s && s.id)
+      .map((s) => ({ ...s, category: deriveCategory(s) }));
   } catch {
     servers = [];
   }
