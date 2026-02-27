@@ -29,14 +29,16 @@ async function getServersWithCategories(): Promise<MCPServer[]> {
     const valid = servers.filter((s) => s && s.id);
 
     if (valid.length === 0) {
-      console.warn("[MCP Hub] API returned 0 valid servers, using fallback");
-      return getFallbackServers();
+      console.warn("[MCP Hub] SSR got 0 valid servers — client will hydrate from /api/servers");
+      // Return empty array — client-side ServerGrid will fetch via /api/servers
+      return [];
     }
 
     return valid.map((s) => ({ ...s, category: deriveCategory(s) }));
   } catch (err) {
-    console.error("[MCP Hub] Registry fetch error, using fallback:", err);
-    return getFallbackServers();
+    console.error("[MCP Hub] Registry fetch error:", err);
+    // Return empty array — client-side ServerGrid will fetch via /api/servers
+    return [];
   }
 }
 
@@ -98,17 +100,6 @@ function getFallbackServers(): MCPServer[] {
       category: "Dev Tools",
     },
     {
-      id: "io.github.modelcontextprotocol/server-sequential-thinking",
-      name: "modelcontextprotocol/server-sequential-thinking",
-      description: "Dynamic and reflective problem-solving through thought sequences.",
-      created_at: "2024-11-01T00:00:00Z",
-      updated_at: "2025-11-01T00:00:00Z",
-      version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-sequential-thinking" }],
-      repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
-      category: "AI & ML",
-    },
-    {
       id: "io.github.modelcontextprotocol/server-postgres",
       name: "modelcontextprotocol/server-postgres",
       description: "Read-only database access with schema inspection and SQL query execution.",
@@ -118,61 +109,6 @@ function getFallbackServers(): MCPServer[] {
       packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-postgres" }],
       repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
       category: "Database",
-    },
-    {
-      id: "io.github.modelcontextprotocol/server-slack",
-      name: "modelcontextprotocol/server-slack",
-      description: "Channel management and messaging capabilities for Slack workspaces.",
-      created_at: "2024-11-01T00:00:00Z",
-      updated_at: "2025-11-01T00:00:00Z",
-      version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-slack" }],
-      repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
-      category: "Productivity",
-    },
-    {
-      id: "io.github.modelcontextprotocol/server-brave-search",
-      name: "modelcontextprotocol/server-brave-search",
-      description: "Web and local search using Brave's Search API.",
-      created_at: "2024-11-01T00:00:00Z",
-      updated_at: "2025-11-01T00:00:00Z",
-      version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-brave-search" }],
-      repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
-      category: "Web & Search",
-    },
-    {
-      id: "io.github.modelcontextprotocol/server-puppeteer",
-      name: "modelcontextprotocol/server-puppeteer",
-      description: "Browser automation and web scraping using Puppeteer.",
-      created_at: "2024-11-01T00:00:00Z",
-      updated_at: "2025-11-01T00:00:00Z",
-      version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-puppeteer" }],
-      repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
-      category: "Web & Search",
-    },
-    {
-      id: "io.github.modelcontextprotocol/server-google-maps",
-      name: "modelcontextprotocol/server-google-maps",
-      description: "Location services, directions, and place details via Google Maps API.",
-      created_at: "2024-11-01T00:00:00Z",
-      updated_at: "2025-11-01T00:00:00Z",
-      version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-google-maps" }],
-      repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
-      category: "Data & APIs",
-    },
-    {
-      id: "io.github.modelcontextprotocol/server-aws-kb-retrieval",
-      name: "modelcontextprotocol/server-aws-kb-retrieval",
-      description: "Retrieval from AWS Knowledge Base using Bedrock Agent Runtime.",
-      created_at: "2024-11-01T00:00:00Z",
-      updated_at: "2025-11-01T00:00:00Z",
-      version_detail: { version: "0.6.2", release_date: "2025-11-01T00:00:00Z", is_latest: true },
-      packages: [{ registryType: "npm", identifier: "@modelcontextprotocol/server-aws-kb-retrieval" }],
-      repository: { url: "https://github.com/modelcontextprotocol/servers", source: "github" },
-      category: "Cloud & Infra",
     },
   ];
 }
